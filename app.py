@@ -1,7 +1,8 @@
 from flask import Flask, render_template, flash, session, redirect, request
 from flask_bootstrap import Bootstrap
 from flask_mysqldb import MySQL
-import yaml, os 
+import os, yaml 
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 Bootstrap(app)
@@ -38,6 +39,13 @@ def register():
             flash('Passowrds do not match! Try again!', 'danger')
             return render_template('register.html')
         cursor = mysql.connection.cursor()
+        cursor.execute("INSERT INTO user(first_name, last_name, username, email, password) VALUES(%s, %s, %s, %s, %s )",
+        (user_details['firstname'],user_details['lastname'],user_details['username'],user_details['email'],
+        generate_password_hash(user_details['password'])))
+        mysql.connection.commit()
+        cursor.close()
+        flash('Registration successful! Please login!','success')
+        return redirect('/login')
         
     return render_template('register.html')
 
