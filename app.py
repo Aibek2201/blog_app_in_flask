@@ -3,9 +3,11 @@ from flask_bootstrap import Bootstrap
 from flask_mysqldb import MySQL
 import os, yaml 
 from werkzeug.security import generate_password_hash, check_password_hash
+from flask_ckeditor import CKEditor
 
 app = Flask(__name__)
 Bootstrap(app)
+CKEditor(app)
 
 db = yaml.load(open('db.yaml'))
 app.config['MYSQL_HOST'] = db['mysql_host']
@@ -18,7 +20,13 @@ mysql = MySQL(app)
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    cursor = mysql.connection.cursor()
+    result_value = cursor.execute('SELECT * FROM blog')
+    if result_value > 0:
+        blogs = cursor.fetchall()
+        cursor.close()
+        return render_template('index.html', blogs = blogs)
+    return render_template('index.html', blogs = None)
 
 
 @app.route('/about/')
@@ -27,8 +35,13 @@ def about():
 
 
 @app.route('/blogs/<int:id>')
-def blogs(id): 
-    return render_template('blogs.html', blog_id = id)
+def blogs(id):
+    cursor = mysql.connection.cursor()
+    result_value = cursor.execute(f'SELECT * FROM blog WHERE blog_id = {id}')
+    if result_value > 0:
+        blog = cursor.fetchone()
+        return render_template('blogs.html', blog = blog)
+    return 'Blog is not found'
 
 
 @app.route('/register/',methods = ['GET','POST'])
@@ -79,6 +92,17 @@ def login():
 
 @app.route('/write-blog/',methods = ['GET','POST'])
 def write_blog(): 
+    if request.method == 'POST':
+        blogpost = request.form
+        title = blogpost['title']
+        body = blogpost['body']
+        author = session['first_name'] + ' ' + session['last_name']
+        cursor = mysql.connection.cursor()
+        cursor.execute("INSERT INTO blog(title, body, author) VALUES (%s, %s, %s)",(title, body, author))
+        mysql.connection.commit()
+        cursor.close()
+        flash('Your blogpost is successfully posted!', 'success')
+        return redirect('/')
     return render_template('write-blog.html')
 
 
